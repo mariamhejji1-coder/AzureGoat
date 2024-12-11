@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 0.13"
+  required_version = ">= 1.9.5"
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
@@ -23,13 +23,13 @@ variable "resource_group" {
 
 variable "location" {
   type = string
-  default = "eastus"
+  default = "australiaeast"
 }
  
 
 resource "azurerm_cosmosdb_account" "db" {
   name                = "ine-cosmos-db-data-${random_id.randomId.dec}"
-  location            = "eastus"
+  location            = "australiaeast"
   resource_group_name = var.resource_group
   offer_type          = "Standard"
   kind                = "GlobalDocumentDB"
@@ -45,7 +45,7 @@ resource "azurerm_cosmosdb_account" "db" {
   }
 
   geo_location {
-    location          = "eastus"
+    location          = "australiaeast"
     failover_priority = 0
   }
 }
@@ -149,44 +149,42 @@ resource "azurerm_storage_blob" "storage_blob" {
 }
 
 
-resource "azurerm_app_service_plan" "app_service_plan" {
+resource "azurerm_service_plan" "app_service_plan" {
   name                = "appazgoat${random_id.randomId.dec}-app-service-plan"
   resource_group_name = var.resource_group
   location            = var.location
-  kind                = "FunctionApp"
-  reserved            = true
-  sku {
-    tier = "Dynamic"
-    size = "Y1"
-  }
+  os_type             = "Linux"
+  sku_name            = "Y1"
 }
 
-resource "azurerm_function_app" "function_app" {
+
+resource "azurerm_linux_function_app" "function_app" {
   name                       = "appazgoat${random_id.randomId.dec}-function"
   resource_group_name        = var.resource_group
   location                   = var.location
-  app_service_plan_id        = azurerm_app_service_plan.app_service_plan.id
+  service_plan_id            = azurerm_service_plan.app_service_plan.id
+  storage_account_name       = azurerm_storage_account.storage_account.name
+  storage_account_access_key = azurerm_storage_account.storage_account.primary_access_key
+  depends_on = [azurerm_cosmosdb_account.db,azurerm_storage_account.storage_account,null_resource.env_replace]
+
   app_settings = {
-    "WEBSITE_RUN_FROM_PACKAGE"    = "https://${azurerm_storage_account.storage_account.name}.blob.core.windows.net/${azurerm_storage_container.storage_container.name}/${azurerm_storage_blob.storage_blob.name}${data.azurerm_storage_account_blob_container_sas.storage_account_blob_container_sas.sas}",
-    FUNCTIONS_WORKER_RUNTIME = "python",
-    "JWT_SECRET" = "T2BYL6#]zc>Byuzu",
-    "AZ_DB_ENDPOINT" = "${azurerm_cosmosdb_account.db.endpoint}",
-    "AZ_DB_PRIMARYKEY" = "${azurerm_cosmosdb_account.db.primary_key}",
-    "CON_STR" = "${azurerm_storage_account.storage_account.primary_connection_string}"
-    "CONTAINER_NAME" = "${azurerm_storage_container.storage_container.name}"
+    "WEBSITE_RUN_FROM_PACKAGE" = "https://${azurerm_storage_account.storage_account.name}.blob.core.windows.net/${azurerm_storage_container.storage_container.name}/${azurerm_storage_blob.storage_blob.name}${data.azurerm_storage_account_blob_container_sas.storage_account_blob_container_sas.sas}",
+    "FUNCTIONS_WORKER_RUNTIME" = "python",
+    "JWT_SECRET"               = "T2BYL6#]zc>Byuzu",
+    "AZ_DB_ENDPOINT"           = azurerm_cosmosdb_account.db.endpoint,
+    "AZ_DB_PRIMARYKEY"         = azurerm_cosmosdb_account.db.primary_key,
+    "CON_STR"                  = azurerm_storage_account.storage_account.primary_connection_string,
+    "CONTAINER_NAME"           = azurerm_storage_container.storage_container.name
   }
-  os_type = "linux"
+
   site_config {
-    linux_fx_version = "python|3.9"
-    use_32_bit_worker_process = false
+    application_stack {
+      python_version = "3.9"
+    }
     cors {
       allowed_origins = ["*"]
     }
   }
-  storage_account_name       = azurerm_storage_account.storage_account.name
-  storage_account_access_key = azurerm_storage_account.storage_account.primary_access_key
-  version                    = "~3"
-  depends_on = [azurerm_cosmosdb_account.db,azurerm_storage_account.storage_account,null_resource.env_replace]
 }
 
 
@@ -252,7 +250,7 @@ sed -i 's/="\//="https:\/\/${azurerm_storage_account.storage_account.name}\.blob
 sed -i 's/"\/static/"https:\/\/${azurerm_storage_account.storage_account.name}\.blob\.core\.windows\.net\/${azurerm_storage_container.storage_container_prod.name}\/webfiles\/build\/static/g' modules/module-1/resources/storage_account/webfiles/build/static/js/main.adc6b28e.js
 sed -i 's/"\/static/"https:\/\/${azurerm_storage_account.storage_account.name}\.blob\.core\.windows\.net\/${azurerm_storage_container.storage_container_prod.name}\/webfiles\/build\/static/g' modules/module-1/resources/storage_account/webfiles/build/static/js/main.adc6b28e.js
 sed -i 's/n.p+"static/"https:\/\/${azurerm_storage_account.storage_account.name}\.blob\.core\.windows\.net\/${azurerm_storage_container.storage_container_prod.name}\/webfiles\/build\/static/g' modules/module-1/resources/storage_account/webfiles/build/static/js/main.adc6b28e.js
-sed -i "s,AZURE_FUNCTION_URL,https:\/\/${azurerm_function_app.function_app.default_hostname},g" modules/module-1/resources/storage_account/webfiles/build/static/js/main.adc6b28e.js
+sed -i "s,AZURE_FUNCTION_URL,https:\/\/${azurerm_linux_function_app.function_app.default_hostname},g" modules/module-1/resources/storage_account/webfiles/build/static/js/main.adc6b28e.js
 EOF 
     interpreter = ["/bin/bash", "-c"]
   }
@@ -531,26 +529,31 @@ resource "azurerm_storage_blob" "storage_blob_front" {
 }
 
 
-resource "azurerm_function_app" "function_app_front" {
+resource "azurerm_linux_function_app" "function_app_front" {
   name                       = "appazgoat${random_id.randomId.dec}-function-app"
   resource_group_name        = var.resource_group
   location                   = var.location
-  app_service_plan_id        = azurerm_app_service_plan.app_service_plan.id
+  service_plan_id            = azurerm_service_plan.app_service_plan.id
+  storage_account_name       = azurerm_storage_account.storage_account.name
+  storage_account_access_key = azurerm_storage_account.storage_account.primary_access_key
+  depends_on                 = [null_resource.file_replacement_upload]
   app_settings = {
     "WEBSITE_RUN_FROM_PACKAGE"    = "https://${azurerm_storage_account.storage_account.name}.blob.core.windows.net/${azurerm_storage_container.storage_container.name}/${azurerm_storage_blob.storage_blob_front.name}${data.azurerm_storage_account_blob_container_sas.storage_account_blob_container_sas.sas}",
     FUNCTIONS_WORKER_RUNTIME = "node",
     "AzureWebJobsDisableHomepage" = "true",
+    FUNCTIONS_EXTENSION_VERSION = "~3"
   }
-  os_type = "linux"
+
   site_config {
-    linux_fx_version = "node|12"
-    use_32_bit_worker_process = false
+    application_stack {
+      node_version = "12"
+    }
+    cors {
+      allowed_origins = ["*"]
+    }
   }
-  storage_account_name       = azurerm_storage_account.storage_account.name
-  storage_account_access_key = azurerm_storage_account.storage_account.primary_access_key
-  version                    = "~3"
-  depends_on = [null_resource.file_replacement_upload]
 }
+
 
 resource "null_resource" "file_replacement_vm_ip" {
   provisioner "local-exec" {
@@ -587,6 +590,6 @@ resource "azurerm_storage_blob" "config_update_vm" {
 }
   
 output "Target_URL"{
-  value = "https://${azurerm_function_app.function_app_front.name}.azurewebsites.net"
+  value = "https://${azurerm_linux_function_app.function_app_front.name}.azurewebsites.net"
 }
     
