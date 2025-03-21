@@ -29,7 +29,7 @@ variable "location" {
 
 resource "azurerm_cosmosdb_account" "db" {
   name                = "ine-cosmos-db-data-${random_id.randomId.dec}"
-  location            = "eastus"
+  location            = var.location
   resource_group_name = var.resource_group
   offer_type          = "Standard"
   kind                = "GlobalDocumentDB"
@@ -45,7 +45,7 @@ resource "azurerm_cosmosdb_account" "db" {
   }
 
   geo_location {
-    location          = "eastus"
+    location          = var.location
     failover_priority = 0
   }
 }
@@ -171,7 +171,10 @@ resource "azurerm_linux_function_app" "function_app" {
     "CON_STR"                  = "${azurerm_storage_account.storage_account.primary_connection_string}",
     "CONTAINER_NAME"           = "${azurerm_storage_container.storage_container.name}"
   }
-  site_config {}
+  site_config {
+  #  linux_fx_version = "Python|3.9"
+  }
+  functions_extension_version = "~4"
   storage_account_name       = azurerm_storage_account.storage_account.name
   storage_account_access_key = azurerm_storage_account.storage_account.primary_access_key
   depends_on                 = [azurerm_cosmosdb_account.db, azurerm_storage_account.storage_account, null_resource.env_replace]
@@ -529,7 +532,10 @@ resource "azurerm_linux_function_app" "function_app_front" {
     FUNCTIONS_WORKER_RUNTIME      = "node",
     "AzureWebJobsDisableHomepage" = "true",
   }
-  site_config {}
+  functions_extension_version = "~4"
+  site_config {
+  #  linux_fx_version = "Node|18"
+  }
   storage_account_name       = azurerm_storage_account.storage_account.name
   storage_account_access_key = azurerm_storage_account.storage_account.primary_access_key
   depends_on                 = [null_resource.file_replacement_upload]
