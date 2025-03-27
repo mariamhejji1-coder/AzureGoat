@@ -152,15 +152,15 @@ resource "azurerm_storage_blob" "storage_blob" {
 resource "azurerm_service_plan" "app_service_plan" {
   name                = "appazgoat${random_id.randomId.dec}-app-service-plan"
   resource_group_name = var.resource_group
-  location            = var.location
-  os_type             = "Linux" # Updated to replace the deprecated 'reserved' attribute
+  location            = "southeastasia" # Try to create in different region with the resource group
+  os_type             = "Linux"         # Updated to replace the deprecated 'reserved' attribute
   sku_name            = "P1v2"
 }
 
 resource "azurerm_linux_function_app" "function_app" {
   name                = "appazgoat${random_id.randomId.dec}-function"
   resource_group_name = var.resource_group
-  location            = var.location
+  location            = "southeastasia"
   service_plan_id     = azurerm_service_plan.app_service_plan.id
   app_settings = {
     "WEBSITE_RUN_FROM_PACKAGE" = "https://${azurerm_storage_account.storage_account.name}.blob.core.windows.net/${azurerm_storage_container.storage_container.name}/${azurerm_storage_blob.storage_blob.name}${data.azurerm_storage_account_blob_container_sas.storage_account_blob_container_sas.sas}",
@@ -172,12 +172,12 @@ resource "azurerm_linux_function_app" "function_app" {
     "CONTAINER_NAME"           = "${azurerm_storage_container.storage_container.name}"
   }
   site_config {
-  #  linux_fx_version = "Python|3.9"
+    #  linux_fx_version = "Python|3.9"
   }
   functions_extension_version = "~4"
-  storage_account_name       = azurerm_storage_account.storage_account.name
-  storage_account_access_key = azurerm_storage_account.storage_account.primary_access_key
-  depends_on                 = [azurerm_cosmosdb_account.db, azurerm_storage_account.storage_account, null_resource.env_replace]
+  storage_account_name        = azurerm_storage_account.storage_account.name
+  storage_account_access_key  = azurerm_storage_account.storage_account.primary_access_key
+  depends_on                  = [azurerm_cosmosdb_account.db, azurerm_storage_account.storage_account, null_resource.env_replace]
 }
 
 
@@ -461,7 +461,7 @@ resource "azurerm_user_assigned_identity" "user_id" {
 
 resource "azurerm_automation_account" "dev_automation_account_test" {
   name                = "dev-automation-account-appazgoat${random_id.randomId.dec}"
-  location            = var.location
+  location            = "southeastasia"
   resource_group_name = var.resource_group
   sku_name            = "Basic"
   identity {
@@ -492,7 +492,7 @@ EOF
 
 resource "azurerm_automation_runbook" "dev_automation_runbook" {
   name                    = "Get-AzureVM"
-  location                = var.location
+  location                = "southeastasia"
   resource_group_name     = var.resource_group
   automation_account_name = azurerm_automation_account.dev_automation_account_test.name
   log_verbose             = "true"
@@ -525,7 +525,7 @@ resource "azurerm_storage_blob" "storage_blob_front" {
 resource "azurerm_linux_function_app" "function_app_front" {
   name                = "appazgoat${random_id.randomId.dec}-function-app"
   resource_group_name = var.resource_group
-  location            = var.location
+  location            = "southeastasia"
   service_plan_id     = azurerm_service_plan.app_service_plan.id
   app_settings = {
     "WEBSITE_RUN_FROM_PACKAGE"    = "https://${azurerm_storage_account.storage_account.name}.blob.core.windows.net/${azurerm_storage_container.storage_container.name}/${azurerm_storage_blob.storage_blob_front.name}${data.azurerm_storage_account_blob_container_sas.storage_account_blob_container_sas.sas}",
@@ -534,7 +534,7 @@ resource "azurerm_linux_function_app" "function_app_front" {
   }
   functions_extension_version = "~4"
   site_config {
-  #  linux_fx_version = "Node|18"
+    #  linux_fx_version = "Node|18"
   }
   storage_account_name       = azurerm_storage_account.storage_account.name
   storage_account_access_key = azurerm_storage_account.storage_account.primary_access_key
