@@ -3,22 +3,27 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.11.0"
+      version = "~> 4.27.0"
     }
     random = {
       source  = "hashicorp/random"
-      version = "~> 3.1.0"
+      version = "~> 3.7.2"
     }
   }
 }
 
 provider "azurerm" {
   features {}
+  subscription_id = var.subscription_id
 }
 
 
 variable "resource_group" {
   default = "azuregoat_app"
+}
+
+variable "subscription_id" {
+  type = string
 }
 
 variable "location" {
@@ -175,6 +180,9 @@ resource "azurerm_linux_function_app" "function_app" {
     #  linux_fx_version = "Python|3.9"
     application_stack {
       python_version = "3.9"
+    }
+    cors {
+      allowed_origins = [ "*" ]
     }
   }
   functions_extension_version = "~4"
@@ -585,4 +593,3 @@ resource "azurerm_storage_blob" "config_update_vm" {
 output "Target_URL" {
   value = "https://${azurerm_linux_function_app.function_app_front.name}.azurewebsites.net"
 }
-
