@@ -182,7 +182,7 @@ resource "azurerm_linux_function_app" "function_app" {
       python_version = "3.9"
     }
     cors {
-      allowed_origins = [ "*" ]
+      allowed_origins = ["*"]
     }
   }
   functions_extension_version = "~4"
@@ -549,7 +549,7 @@ resource "azurerm_linux_function_app" "function_app_front" {
     application_stack {
       node_version = "16"
     }
-    
+
   }
   storage_account_name       = azurerm_storage_account.storage_account.name
   storage_account_access_key = azurerm_storage_account.storage_account.primary_access_key
