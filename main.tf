@@ -9,7 +9,16 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.1.0"
     }
+
   }
+  # Terraform Cloud backend — workspace settings managed in TFC UI
+  cloud {
+    organization = "cybervaultschool"
+    workspaces {
+      name = "TerraformCI-v3"
+    }
+  }
+
 }
 
 provider "azurerm" {
