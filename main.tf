@@ -389,7 +389,7 @@ resource "azurerm_public_ip" "VM_PublicIP" {
   name                    = "developerVMPublicIP${random_id.randomId.dec}"
   resource_group_name     = var.resource_group
   location                = var.location
-  allocation_method       = "Dynamic"
+  allocation_method       = "Static"
   idle_timeout_in_minutes = 4
   domain_name_label       = lower("developervm-${random_id.randomId.dec}")
   sku                     = "Standard"
