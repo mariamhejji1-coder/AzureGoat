@@ -31,6 +31,11 @@ variable "location" {
   default = "eastus"
 }
 
+resource "azurerm_resource_group" "rg" {
+  name     = var.resource_group # = "azuregoat_app"
+  location = var.location       # = "eastus"
+}
+
 resource "azurerm_cosmosdb_account" "db" {
   name                = "ine-cosmos-db-data-${random_id.randomId.dec}"
   location            = "eastus"
