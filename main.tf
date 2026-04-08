@@ -224,7 +224,7 @@ resource "azurerm_service_plan" "app_service_plan" {
   resource_group_name = var.resource_group
   location            = var.location
   os_type             = "Linux"
-  sku_name            = "Y1"
+  sku_name            = "B1"
 
   depends_on = [azurerm_resource_group.rg]
 }
